@@ -1,6 +1,6 @@
 {
   "name": "xbox-live-api",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Xbox Live API Interface.",
   "main": "index.js",
   "scripts": {
@@ -8,6 +8,9 @@
   },
   "author": "Dustin Rue",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dustinrue/node-xbox-live-api/issues"
+  },
   "dependencies": {
     "cookie": "^0.2.3",
     "http": "0.0.0",
