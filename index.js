@@ -47,16 +47,9 @@ xla.FetchPreAuthData = function(callback) {
       method: 'GET',
       path: '/oauth20_authorize.srf?' + post_vals_qs,
     }
-
-
-    //console.log("Query string: " + post_vals_qs);
+    
     var xruReq = https.request(options, function(res) {
-      //console.log("object: ", res);
-      //console.log("XBL statusCode: ", res.statusCode);
-      
-      //console.log("headers: ", res.headers);
       var cookie = res.headers['set-cookie'];
-      //console.log("Cookie parsing");
       var cookies = '';
       var a_cookie;
       for(var i = 0; i < cookie.length; i++) {
@@ -80,12 +73,9 @@ xla.FetchPreAuthData = function(callback) {
         str += chunk;
       });
       res.on('end', function () {
-        //console.log(str);
         url_post = str.match(/urlPost:'([A-Za-z0-9:\?_\-\.&\\/=]+)/)[1];
-        
         ppft_re = str.match(/sFTTag:'.*value=\"(.*)\"\/>'/)[1];
-        //console.log("url_post: ", url_post);
-        //console.log("ppft_re: ", ppft_re);
+        
         xlaCache.set('url_post', url_post, 0, function(err,success) {
           if( !err && success ){
             //console.log('url_post cached');
@@ -129,17 +119,12 @@ xla.FetchInitialAccessToken = function(callback) {
   
   xlaCache.get("access_token", function(err, value) {
     if (!err && value) {
-      //console.log("access token was in cache");
       access_token = value;
       callback(access_token);
     }
     else {
-      //console.log("access token not found");
       var access_token_callback = function (response) {
-        //console.log("XBL statusCode: ", response.statusCode);
-        //console.log("Headers: ", response.headers);
         var cookie = response.headers['set-cookie'];
-        //console.log("Cookie parsing");
         var cookies = '';
         var a_cookie;
         for(var i = 0; i < cookie.length; i++) {
@@ -148,13 +133,11 @@ xla.FetchInitialAccessToken = function(callback) {
           var desired_key = keys[0];
           var desired_value = a_cookie[desired_key];
 
-          //console.log("Cookie value: ", desired_key + "=" + desired_value);
           cookies += desired_key + "=" + desired_value;
           if (i < cookie.length - 1)
             cookies += "; ";
         }
-        //console.log("Cookies parsed: ", cookies);
-        //console.log("Cookie: ", cookies);
+    
         xlaCache.set('cookie', cookies, 0, function(err, success) {
           if (err) {
             console.log("Failed to save the cookie");
@@ -166,8 +149,6 @@ xla.FetchInitialAccessToken = function(callback) {
           str += chunk;
         });
         response.on('end', function () {
-          //console.log(str);
-          //console.log("moving along");
           access_token = response.headers.location.match(/access_token=(.+?)&/)[1]
           xlaCache.set('access_token', access_token, 0, function(err,success) {
             if( !err && success ) {
@@ -192,7 +173,6 @@ xla.FetchInitialAccessToken = function(callback) {
           else {
             //console.log("Something else happened");
           }
-          //console.log("Cookie from cache: ", value);
           cookie = value;
         });
         var post_vals = {
@@ -214,16 +194,10 @@ xla.FetchInitialAccessToken = function(callback) {
           
         };
         var post_vals_qs = querystring.stringify(post_vals);
-
-        
-        //console.log(post_vals_qs);
         parsed_url_post = url.parse(url_post);
-        //console.log("Cookie: ", cookie);
-        //console.log('path: ', parsed_url_post['path']);
+     
         var request_options = {
           host: 'login.live.com',
-          //host: 'drue.xboxrecord.us',
-          //path: '/raw',
           path: parsed_url_post['path'],
           method: 'POST',
           headers: {
@@ -232,7 +206,6 @@ xla.FetchInitialAccessToken = function(callback) {
             'Content-Length': Buffer.byteLength(post_vals_qs,'utf8'),
           },
         };
-        //console.log("size: ", Buffer.byteLength(post_vals_qs,'utf8'));
         var access_token = https.request(request_options, access_token_callback);
         access_token.write(post_vals_qs);
         access_token.on('socket', function (socket) {
@@ -243,10 +216,7 @@ xla.FetchInitialAccessToken = function(callback) {
         });
         access_token.end();
       }  
-      //console.log("fetch pre auth");
       xla.FetchPreAuthData(pre_auth_data);
-  
-  
     };
   });
 };
@@ -273,18 +243,14 @@ xla.Authenticate = function (callback) {
     }
     else {
       xla.FetchInitialAccessToken(function(access_token) {
-        //console.log("Access token: ", access_token);
         xlaCache.get('cookie', function(err, value) {
           if (err) {
             console.log("Failed to get cookie from cache, this shouldn't happen");
           }
-          else {
-            //console.log("Something else happened");
-          }
-          //console.log("Cookie from cache: ", value);
+
           cookie = value;
         });
-        //console.log("Authenticate cookie: ", cookie);
+        
         var payload = {
           'RelyingParty': 'http://auth.xboxlive.com',
           'TokenType': 'JWT',
@@ -309,7 +275,6 @@ xla.Authenticate = function (callback) {
         
         var authentication = https.request(request_options, function(response) {
           if (response.statusCode != '200') console.log("Authentication XBL statusCode: ", response.statusCode);
-          //console.log(response.headers);
           
           var str = '';
           response.on('data', function(chunk) {
@@ -321,7 +286,6 @@ xla.Authenticate = function (callback) {
             } catch (e) {
               return console.error(e);
             }
-            //console.log(str);
             notAfter = str.NotAfter;
             token = str.Token;
             uhs = str.DisplayClaims.xui[0].uhs;
@@ -340,7 +304,7 @@ xla.Authenticate = function (callback) {
             callback(token, uhs, notAfter);
           });
         });
-        //console.log("Desired payload: ", JSON.stringify(payload));
+      
         authentication.write(JSON.stringify(payload));
         authentication.on('socket', function (socket) {
           socket.setTimeout(12000);
@@ -383,10 +347,7 @@ xla.GetAuthorization = function(callback) {
           if (err) {
             console.log("Failed to get cookie from cache, this shouldn't happen");
           }
-          else {
-            //console.log("Something else happened");
-          }
-          //console.log("Cookie from cache: ", value);
+
           cookie = value;
         });
       
@@ -410,12 +371,11 @@ xla.GetAuthorization = function(callback) {
             'Content-Length': Buffer.byteLength(JSON.stringify(payload),'utf8'),
           },
         };
-        //console.log("Cookie: ", cookie);
+        
         var authorization = https.request(request_options, function(response) {
           
           if (response.statusCode != '200') console.log("Authorization XBL statusCode: ", response.statusCode);
-          //console.log(response.headers);
-          
+        
           var str = '';
           response.on('data', function(chunk) {
             str += chunk;
@@ -443,7 +403,7 @@ xla.GetAuthorization = function(callback) {
             callback(authorizationHeader);
           });
         });
-        //console.log("Desired payload: ", JSON.stringify(payload));
+        
         authorization.write(JSON.stringify(payload));
         authorization.on('socket', function (socket) {
           socket.setTimeout(12000);
@@ -470,10 +430,7 @@ xla.GetXuid = function(gamertag, callback) {
           if (err) {
             console.log("Failed to get cookie from cache, this shouldn't happen");
           }
-          else {
-            //console.log("Something else happened");
-          }
-          //console.log("Cookie from cache: ", value);
+         
           cookie = value;
         });
         var request_options = {
@@ -493,7 +450,6 @@ xla.GetXuid = function(gamertag, callback) {
 
         var getXuid = https.request(request_options, function(response) {
           if (response.statusCode != '200') console.log("Get xuid XBL statusCode: ", response.statusCode);
-          //console.log(response.headers);
           
           var str = '';
           response.on('data', function(chunk) {
@@ -543,10 +499,7 @@ xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
         if (err) {
           console.log("Failed to get cookie from cache, this shouldn't happen");
         }
-        else {
-          //console.log("Something else happened");
-        }
-        //console.log("Cookie from cache: ", value);
+
         cookie = value;
       });
   
@@ -556,7 +509,7 @@ xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
       else {
         path = '/users/xuid(' + encodeURIComponent(xuid) + ')/titles/' + encodeURIComponent(titleid) + '/clips?maxItems=25';
       }
-      // console.log(path);
+      
       var request_options = {
         hostname: 'gameclipsmetadata.xboxlive.com',
         path: path,
@@ -572,7 +525,6 @@ xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
 
       var getClipsForGamer = https.request(request_options, function(response) {
         if (response.statusCode != '200') console.log("Get Clips for Gamer XBL statusCode: ", response.statusCode);
-        //console.log(response.headers);
 
         var str = '';
         response.on('data', function(chunk) {
@@ -589,7 +541,6 @@ xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
           return;
         });
       });
-      //console.log("Desired payload: ", JSON.stringify(payload));
 
       getClipsForGamer.on('socket', function (socket) {
         socket.setTimeout(12000);
