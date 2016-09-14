@@ -4,7 +4,7 @@ Xbox Live API client used on http://guardian.theater. It currently will only get
 
 Example Usage:
 
-Add xbox-live-api as dependency to your project then
+npm install xbox-live-api then
 
 ```javascript
 var xla = require('xbox-live-api');
