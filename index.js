@@ -425,131 +425,89 @@ xla.GetXuid = function(gamertag, callback) {
       callback(value);
     }
     else {
-        xla.GetAuthorization(function (authorizationHeader) {  
-        xlaCache.get('cookie', function(err, value) {
-          if (err) {
-            console.log("Failed to get cookie from cache, this shouldn't happen");
-          }
-         
-          cookie = value;
+      var host = 'profile.xboxlive.com';
+      var uri = '/users/gt(' + encodeURIComponent(gamertag) + ')/profile/settings';
+      
+      xla.request(host, uri, function(str) {
+        if (!str.profileUsers || !str.profileUsers.length) str.profileUsers = [{id: -1}];
+        xlaCache.set('xuidForGamertag-' + gamertag, str.profileUsers[0].id, 0, function(err, success) {
+          if (err)
+            console.log("Failed to cache xuidForGamertag for " + gamertag);
         });
-        var request_options = {
-          hostname: 'profile.xboxlive.com',
-          path: '/users/gt(' + encodeURIComponent(gamertag) + ')/profile/settings',
-          //path: '/raw',
-          method: 'GET',
-          headers: {
-            Cookie: cookie,
-            'Content-Type': 'application/json',
-            'x-xbl-contract-version': '2',
-            'User-Agent': xla.useragent + ' Like SmartGlass/2.105.0415 CFNetwork/711.3.18 Darwin/14.0.0',
-            'Authorization': authorizationHeader,
-
-          }
-        };
-
-        var getXuid = https.request(request_options, function(response) {
-          if (response.statusCode != '200') console.log("Get xuid XBL statusCode: ", response.statusCode);
-          
-          var str = '';
-          response.on('data', function(chunk) {
-            str += chunk;
-          });
-          response.on('end', function() {
-            try {
-              str = JSON.parse(str);
-            } catch (e) {
-              callback(-1);
-              return console.error(e);
-            }
-            if (!str.profileUsers || !str.profileUsers.length) str.profileUsers = [{id: -1}];
-            xlaCache.set('xuidForGamertag-' + gamertag, str.profileUsers[0].id, 0, function(err, success) {
-              if (err)
-                console.log("Failed to cache xuidForGamertag for " + gamertag);
-            });
-            callback(str.profileUsers[0].id);
-          });
-        });
-        
-        getXuid.on('socket', function (socket) {
-          socket.setTimeout(12000);
-        });
-        getXuid.on('error', function (err) {
-          console.log(err);
-          callback(-1);
-        });
-        getXuid.end();
+        callback(str.profileUsers[0].id);
+        return;
       });
-    }
+    };
   });
-
 }
 
 xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
-  var cookie = '';
-  var path = '';
-  
-  xla.GetAuthorization(function (authorizationHeader) {
-    xla.GetXuid(gamertag, function(xuid) {
-      if (xuid < 0) {
-      //  console.log('no xuid found')
-        return callback({"gameClips":[],"pagingInfo":{"continuationToken":null},"noXuid":true});
-      }
-      xlaCache.get('cookie', function(err, value) {
-        if (err) {
-          console.log("Failed to get cookie from cache, this shouldn't happen");
-        }
+  xla.GetXuid(gamertag, function(xuid) {
 
-        cookie = value;
-      });
-  
-      if (continueToken != '') {
-        path = '/users/xuid(' + encodeURIComponent(xuid) + ')/titles/' + encodeURIComponent(titleid) + '/clips?maxItems=25&continuationToken=' + encodeURIComponent(continueToken);
-      }
-      else {
-        path = '/users/xuid(' + encodeURIComponent(xuid) + ')/titles/' + encodeURIComponent(titleid) + '/clips?maxItems=25';
-      }
-      
-      var request_options = {
-        hostname: 'gameclipsmetadata.xboxlive.com',
-        path: path,
-        method: 'GET',
-        headers: {
-          Cookie: cookie,
-          'Content-Type': 'application/json',
-          'x-xbl-contract-version': '2',
-          'User-Agent': xla.useragent + ' Like SmartGlass/2.105.0415 CFNetwork/711.3.18 Darwin/14.0.0',
-          'Authorization': authorizationHeader,
-        }
-      };
+    if (xuid < 0) {
+      callback({"gameClips":[],"pagingInfo":{"continuationToken":null},"noXuid":true});
+      return;
+    }
 
-      var getClipsForGamer = https.request(request_options, function(response) {
-        if (response.statusCode != '200') console.log("Get Clips for Gamer XBL statusCode: ", response.statusCode);
-
-        var str = '';
-        response.on('data', function(chunk) {
-          str += chunk;
-        });
-        response.on('end', function() {
-          try {
-            str = JSON.parse(str);
-          } catch (e) {
-            callback({"gameClips":[],"pagingInfo":{"continuationToken":null},"jsonParseFail":true})
-            return console.error(e);
-          }
-          callback(str);
-          return;
-        });
-      });
-
-      getClipsForGamer.on('socket', function (socket) {
-        socket.setTimeout(12000);
-      });
-      getClipsForGamer.on('error', function (err) {
-        console.log(err);
-      });
-      getClipsForGamer.end();
+    var host = 'gameclipsmetadata.xboxlive.com';
+    var uri = '/users/xuid(' + xuid + ')/clips?maxItems=200';
+    
+    xla.request(host, uri, function(data) {
+      callback(data);
     });
+  });
+}
+
+xla.request = function(host, uri, callback) {
+  var cookie = '';
+
+  xla.GetAuthorization(function (authorizationHeader) {
+    xlaCache.get('cookie', function(err, value) {
+      if (err) {
+        console.log("Failed to get cookie from cache, this shouldn't happen");
+      }
+      cookie = value;
+    });
+
+    var request_options = {
+      hostname: host,
+      path: uri,
+      method: 'GET',
+      headers: {
+        Cookie: cookie,
+        'Content-Type': 'application/json',
+        'x-xbl-contract-version': '2',
+        'User-Agent': xla.useragent + ' Like SmartGlass/2.105.0415 CFNetwork/711.3.18 Darwin/14.0.0',
+        'Authorization': authorizationHeader,
+      }
+    };
+
+    var requestResults = https.request(request_options, function(response) {
+      if (response.statusCode != '200') console.log("Get Clips for Gamer XBL statusCode: ", response.statusCode);
+
+      var str = '';
+      response.on('data', function(chunk) {
+        str += chunk;
+      });
+      response.on('end', function() {
+        try {
+          str = JSON.parse(str);
+        } catch (e) {
+          callback({"gameClips":[],"pagingInfo":{"continuationToken":null},"jsonParseFail":true})
+          return console.error(e);
+        }
+        callback(str);
+        return;
+      });
+    });
+
+    requestResults.on('socket', function (socket) {
+      socket.setTimeout(12000);
+    });
+    requestResults.on('error', function (err) {
+      console.log(err);
+    });
+    requestResults.end();
   });
 }
 
@@ -573,9 +531,4 @@ xla.GetDetailsForClip = function(gamertag, titleid, clipId, callback) {
   }
   
   xla.GetClipsForGamer(gamertag, titleid, continueToken, detailsCallback);
-}
-
-xla.showLogin = function() {
-  console.log(xla.username);
-  console.log(xla.password);
 }
