@@ -418,6 +418,11 @@ xla.GetAuthorization = function(callback) {
   
 }
 
+/*
+ * Exchanges a gamertag for Xbox Live xuid
+ * @param string gamertag
+ * @param callback with single argument (object)
+ */
 xla.GetXuid = function(gamertag, callback) {
   var cookie = '';
   xlaCache.get('xuidForGamertag-' + gamertag, function(err, value) {
@@ -441,6 +446,12 @@ xla.GetXuid = function(gamertag, callback) {
   });
 }
 
+/*
+ * Returns up to 200 GameDVR clips from Xbox Live
+ * @param string gamertag
+ * @param string titleid to limit results to
+ * @param callback with single argument (object)
+ */
 xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
   xla.GetXuid(gamertag, function(xuid) {
 
@@ -458,6 +469,31 @@ xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
   });
 }
 
+/*
+ * Returns up to 200 screenshots from Xbox Live.
+ * @param string gamertag
+ * @param titleid title id to limit results to
+ * @param callback with single argument (object)
+*/
+xla.GetScreenshotsForGamer = function(gamertag, titleid, callback) {
+  xla.GetXuid(gamertag, function(xuid) {
+    if (xuid < 0) {
+      callback({"screenshots":[],"pagingInfo":{"continuationToken":null},"noXuid":true});
+      return;
+    }
+
+    var host = 'screenshotsmetadata.xboxlive.com';
+    var uri = '/users/xuid(' + xuid + ')/screenshots?maxItems=200';
+
+    xla.request(host, uri, function(data) {
+      callback(data);
+    });
+  });
+}
+
+/*
+ * Performs requests, don't call this directly unless you really know what you're doing
+ */
 xla.request = function(host, uri, callback) {
   var cookie = '';
 
@@ -509,26 +545,4 @@ xla.request = function(host, uri, callback) {
     });
     requestResults.end();
   });
-}
-
-xla.GetDetailsForClip = function(gamertag, titleid, clipId, callback) {
-  var continueToken = '';
-  
-  var detailsCallback = function(clipData) {
-    continueToken = clipData.pagingInfo.continuationToken;
-    for (var i = 0; i < clipData.gameClips.length; i++) {
-      if (clipData.gameClips[i].gameClipId == clipId) {
-        callback(clipData.gameClips[i]);
-        return;
-      }
-    }
-    
-    if (continueToken)
-      xla.GetClipsForGamer(gamertag, titleid, continueToken, detailsCallback);
-    else {
-      callback();
-    }
-  }
-  
-  xla.GetClipsForGamer(gamertag, titleid, continueToken, detailsCallback);
 }
