@@ -470,6 +470,35 @@ xla.GetClipsForGamer = function(gamertag, titleid, continueToken, callback) {
 }
 
 /*
+ * Returns clip info for a specific clip
+ * @param string gamertag
+ * @param string titleid to limit results to
+ * @param string clipId ID of the clip to fetch details for
+ * @param callback with single argument (object)
+ */
+xla.GetDetailsForClip = function(gamertag, titleid, clipId, callback) {
+  var continueToken = '';
+
+  var detailsCallback = function(clipData) {
+    continueToken = clipData.pagingInfo.continuationToken;
+    for (var i = 0; i < clipData.gameClips.length; i++) {
+      if (clipData.gameClips[i].gameClipId == clipId) {
+        callback(clipData.gameClips[i]);
+        return;
+      }
+    }
+
+    if (continueToken)
+      xla.GetClipsForGamer(gamertag, titleid, continueToken, detailsCallback);
+    else {
+      callback();
+    }
+  }
+
+  xla.GetClipsForGamer(gamertag, titleid, continueToken, detailsCallback);
+}
+
+/*
  * Returns up to 200 screenshots from Xbox Live.
  * @param string gamertag
  * @param titleid title id to limit results to
